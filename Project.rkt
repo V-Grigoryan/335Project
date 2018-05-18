@@ -189,7 +189,26 @@
 (satisfiable? '(((NOT a) AND b) AND (c OR b)) '(a b c))
 
 
+; Poorly written collect elements function
 
+(define (easy-collect-elements exp)
+  (define (flatten exp)
+    (cond ((null? exp) '())
+          ((pair? exp) (append (flatten (car exp)) (flatten (cdr exp))))
+          (else (list exp))))
+  (define (filter-duplicates lat list-so-far)
+    ; (display list-so-far)
+    ; (newline)
+    (cond ((null? lat) list-so-far)
+          ((not (member? (car lat) list-so-far)) (filter-duplicates (cdr lat) (append list-so-far (list (car lat)))))
+          (else (filter-duplicates (cdr lat) list-so-far))))
+  (define (filter-operators lat list-so-far)
+    ; (display list-so-far)
+    ; (newline)
+    (cond ((null? lat) list-so-far)
+          ((not (eq? (car lat) 'AND)) (filter-operators (cdr lat) (append list-so-far (list (car lat)))))
+          (else (filter-operators (cdr lat) list-so-far))))
+  (filter-operators (filter-duplicates (flatten exp) '()) '()))
 
   
 
