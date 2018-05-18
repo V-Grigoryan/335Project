@@ -201,7 +201,7 @@
         ((and-exp? exp) (and (func (first-arg exp) al) (func (second-arg exp) al)))
         ((not-exp? exp) (not (func (operator exp) al)))))
 
-(satisfiable? '(((NOT a) AND b) AND (c OR b)) '(a b c))
+(satisfiable? '(((NOT a) AND b) AND (c OR b)))
 
 
 
