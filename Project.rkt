@@ -164,14 +164,32 @@
   (cond ((eq? (caar alist) target) (cadar alist))
         (else (lookup target (cdr alist)))))
 
-;
+(define (easy-collect-elements exp)
+  (define (flatten exp)
+    (cond ((null? exp) '())
+          ((pair? exp) (append (flatten (car exp)) (flatten (cdr exp))))
+          (else (list exp))))
+  (define (filter-duplicates lat list-so-far)
+    (cond ((null? lat) list-so-far)
+          ((not (member? (car lat) list-so-far)) (filter-duplicates (cdr lat) (append list-so-far (list (car lat)))))
+          (else (filter-duplicates (cdr lat) list-so-far))))
+  (define (operator? a)
+    (and
+     (not (eq? 'AND a))
+     (not (eq? 'OR a))
+     (not (eq? 'NOT a))
+     (not (eq? 'XOR a))))
+  (define (filter-operators lat)
+    (filter operator? lat))
+(filter-operators (filter-duplicates (flatten exp) '())))
 
 
-(define (satisfiable? exp vars)
+(define (satisfiable? exp)
+  (let ((vars (easy-collect-elements exp)))
   (let ((al (assign-vals vars))); creates alist
     (cond ((var? exp) #t); dont know what should go here yet
           (else (assert (func exp al))))
-    (display "The entered expression is satisfiable. A solution is listed below.")(newline)al))
+    (display "The entered expression is satisfiable. A solution is listed below.")(newline)al)))
 
 
 
