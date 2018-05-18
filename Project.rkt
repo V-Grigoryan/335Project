@@ -16,7 +16,7 @@
   (lambda ()
     (set! amb-fail
           (lambda ()
-            (error "The entered boolean expression is not satisfiable.")))))
+            'NO_RESULT))));display "The entered boolean expression is not satisfiable.")))))
 
 
 (initialize-amb-fail)
@@ -189,7 +189,8 @@
   (let ((al (assign-vals vars))); creates alist
     (cond ((var? exp) #t); dont know what should go here yet
           (else (assert (func exp al))))
-    (display "The entered expression is satisfiable. A solution is listed below.")(newline)al)))
+    (display al)
+    (not (eq? 'NO_RESULT (lookup (car vars) al))))))
 
 
 
@@ -201,12 +202,65 @@
         ((and-exp? exp) (and (func (first-arg exp) al) (func (second-arg exp) al)))
         ((not-exp? exp) (not (func (operator exp) al)))))
 
-(satisfiable? '(((NOT a) AND b) AND (c OR b)))
+; 1. assert a true
+; 1.1 ...
+; 2. assert a false
+; 2.1 ...
 
+(define (get-solution exp)
+  (let ((vars (easy-collect-elements exp)))
+  (let ((al (assign-vals vars))); creates alist
+    (cond ((var? exp) #t); dont know what should go here yet
+          (else (assert (func exp al))))
+    (cond ((not (eq? 'NO_RESULT (lookup (car vars) al))) al)
+          (else '())))))
 
+(define (member~ e s)
+  (cond ((null? s) #f)
+        ((equal? e (car s)) #t)
+        (else (member~ e (cdr s)))))
 
+(define (list-solutions exp)
+  (define (iter list-so-far)
+    (let ((sol (get-solution exp)))
+    (display "list so far: ")
+    (display list-so-far)
+    (newline)
+      ;(display "sol found: ")
+      ;(display sol)
+      ;(newline)
+    (cond ((null? sol) list-so-far)
+          (else
+           ;(display "else entered")
+           ;(newline)
+           ;(display (not (member~ sol list-so-far)))
+           ;(newline)
+           (assert (not (member~ sol list-so-far)))
+           ;(display "solution after assert: ")
+           ;(display sol)
+           ;(newline)
+           (iter (append
+            list-so-far
+            (list sol)))))))
+  (iter '()))
 
-  
+(list-solutions '(a OR b))
 
+(define (distinct~ items)
+  (cond ((null? items) #t)
+        ((null? (cdr items)) #t)
+        ((member~ (car items) (cdr items)) #f)
+        (else (distinct~ (cdr items)))))
 
+(define (test4 exp)
+  (let ((solution1 (get-solution exp))
+        (solution2 (get-solution exp)))
+    (assert (distinct~ (list solution1 solution2)))
+  (list solution1 solution2)))
+
+;(test4 '(a OR b))
+
+; (satisfiable? '(((NOT a) AND b) AND (c XOR b)))
+
+; (satisfiable? '((NOT a) AND a))
 
