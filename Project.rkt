@@ -140,7 +140,7 @@
 
 (define (and-exp? exp) (eq? 'AND (operator exp)))
 (define (or-exp? exp) (eq? 'OR (operator exp)))
-(define (xor-exp? exp) (ep? 'XOR (operator exp)))
+(define (xor-exp? exp) (eq? 'XOR (operator exp)))
 (define (not-exp? exp) (eq? 'NOT (first-arg exp)))
 
 
@@ -170,10 +170,7 @@
 (define (satisfiable? exp vars)
   (let ((al (assign-vals vars))); creates alist
     (cond ((var? exp) #t); dont know what should go here yet
-          ((or-exp? exp) (assert (or (func (first-arg exp) al) (func (second-arg exp) al))))
-          ((xor-exp? exp) (assert (and (or (func (first-arg exp) al) (func (second-arg exp) al)) (not (and (func (first-arg exp) al) (func (second-arg exp) al)))))
-          ((and-exp? exp) (assert (and (func (first-arg exp) al) (func (second-arg exp) al))))
-          ((not-exp? exp) (assert (not (func (operator exp) al)))))
+          (else (assert (func exp al))))
     (display "The entered expression is satisfiable. A solution is listed below.")(newline)al))
 
 
@@ -189,26 +186,7 @@
 (satisfiable? '(((NOT a) AND b) AND (c OR b)) '(a b c))
 
 
-; Poorly written collect elements function
 
-(define (easy-collect-elements exp)
-  (define (flatten exp)
-    (cond ((null? exp) '())
-          ((pair? exp) (append (flatten (car exp)) (flatten (cdr exp))))
-          (else (list exp))))
-  (define (filter-duplicates lat list-so-far)
-    ; (display list-so-far)
-    ; (newline)
-    (cond ((null? lat) list-so-far)
-          ((not (member? (car lat) list-so-far)) (filter-duplicates (cdr lat) (append list-so-far (list (car lat)))))
-          (else (filter-duplicates (cdr lat) list-so-far))))
-  (define (filter-operators lat list-so-far)
-    ; (display list-so-far)
-    ; (newline)
-    (cond ((null? lat) list-so-far)
-          ((not (eq? (car lat) 'AND)) (filter-operators (cdr lat) (append list-so-far (list (car lat)))))
-          (else (filter-operators (cdr lat) list-so-far))))
-  (filter-operators (filter-duplicates (flatten exp) '()) '()))
 
   
 
