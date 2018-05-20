@@ -137,6 +137,8 @@
 (define (second-arg exp)
   (car (cdr (cdr exp))))
 
+(define not-arg operator)
+
 
 (define (and-exp? exp) (eq? 'AND (operator exp)))
 (define (or-exp? exp) (eq? 'OR (operator exp)))
@@ -164,7 +166,7 @@
   (cond ((eq? (caar alist) target) (cadar alist))
         (else (lookup target (cdr alist)))))
 
-(define (easy-collect-elements exp)
+(define (collect-elements exp)
   (define (flatten exp)
     (cond ((null? exp) '())
           ((pair? exp) (append (flatten (car exp)) (flatten (cdr exp))))
@@ -183,24 +185,26 @@
     (filter operator? lat))
 (filter-operators (filter-duplicates (flatten exp) '())))
 
-
+; Precondition: exp is a boolean expression
+; Postcondition: #t will be returned if exp is satisfiable, #f otherwise
 (define (satisfiable? exp)
-  (let ((vars (easy-collect-elements exp)))
-  (let ((al (assign-vals vars))); creates alist
-    (cond ((var? exp) #t); dont know what should go here yet
-          (else (assert (func exp al))))
-    (display al)
+  (let ((vars (collect-elements exp)))
+  (let ((al (assign-vals vars)))
+    (cond ((var? exp) #t)
+          (else (assert (evaluate exp al))))
     (not (eq? 'NO_RESULT (lookup (car vars) al))))))
 
 
 
-; Don't know what to call this function as of right now
-(define (func exp al)
+
+(define (evaluate exp al)
   (cond ((var? exp) (lookup exp al))
-        ((or-exp? exp) (or (func (first-arg exp) al) (func (second-arg exp) al)))
-        ((xor-exp? exp) (and (or (func (first-arg exp) al) (func (second-arg exp) al)) (not (and (func (first-arg exp) al) (func (second-arg exp) al)))))
-        ((and-exp? exp) (and (func (first-arg exp) al) (func (second-arg exp) al)))
-        ((not-exp? exp) (not (func (operator exp) al)))))
+        ((or-exp? exp) (or (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)))
+        ((xor-exp? exp) (and (or (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)) (not (and (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)))))
+        ((and-exp? exp) (and (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)))
+        ((not-exp? exp) (not (evaluate (not-arg exp) al)))))
+
+(satisfiable? '(a XOR b))
 
 ; 1. assert a true
 ; 1.1 ...
@@ -208,10 +212,10 @@
 ; 2.1 ...
 
 (define (get-solution exp)
-  (let ((vars (easy-collect-elements exp)))
+  (let ((vars (collect-elements exp)))
   (let ((al (assign-vals vars))); creates alist
     (cond ((var? exp) #t); dont know what should go here yet
-          (else (assert (func exp al))))
+          (else (assert (evaluate exp al))))
     (cond ((not (eq? 'NO_RESULT (lookup (car vars) al))) al)
           (else '())))))
 
@@ -260,7 +264,7 @@
 
 
 (define (list-solutions2 exp)
-  (define solutions-length (expt 2 (length (easy-collect-elements exp))))
+  (define solutions-length (expt 2 (length (collect-elements exp))))
   (define no-solution 'NO_RESULT)
   (define solutions (make-vector solutions-length no-solution))
   (define (solution-exists? sol)
@@ -291,9 +295,13 @@
 
 ;(list-solutions2 '(a AND b))
 
-(display "Possible solutions for (a or b) or c") (newline)
+;(display "Possible solutions for (a or b) or c") (newline)
 
-(list-solutions2 '((a OR b) OR c))
+;(satisfiable? '((a OR b) OR c))
+
+;(display "Possible solutions for (a AND b) or c") (newline)
+
+;(list-solutions2 '(a AND b))
   
 ;(list-solutions2 '(a AND (NOT a)))
 
