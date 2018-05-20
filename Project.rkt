@@ -244,7 +244,7 @@
             (list sol)))))))
   (iter '()))
 
-(list-solutions '(a OR b))
+;(list-solutions '(a OR b))
 
 (define (distinct~ items)
   (cond ((null? items) #t)
@@ -257,6 +257,45 @@
         (solution2 (get-solution exp)))
     (assert (distinct~ (list solution1 solution2)))
   (list solution1 solution2)))
+
+
+(define (list-solutions2 exp)
+  (define solutions-length (expt 2 (length (easy-collect-elements exp))))
+  (define no-solution 'NO_RESULT)
+  (define solutions (make-vector solutions-length no-solution))
+  (define (solution-exists? sol)
+    (define (iter i)
+      (cond ((equal? (vector-ref solutions i) sol) #t)
+            ((= i (- solutions-length 1)) #f)
+            (else (iter (+ i 1)))))
+    (iter 0))
+  (define (add-solution sol)
+    ; (display "adding ") (display sol) (newline)
+    (define (iter i)
+      (cond ((= i (- solutions-length 1)) (display "Big error.") (newline))
+            ((equal? (vector-ref solutions i) no-solution) (vector-set! solutions i sol))
+            (else (iter (+ i 1)))))
+    (iter 0))
+  (define (main-loop new-sol)
+    ; (display new-sol) (newline) (display "solutions: ") (display solutions) (newline)
+    (let ((new-sol (get-solution exp)))
+      (cond ((null? new-sol) solutions)
+            ((solution-exists? new-sol)
+             (assert (not (solution-exists? new-sol)))
+             (main-loop new-sol))
+            (else
+             (add-solution new-sol)
+             (main-loop new-sol)))))
+  (main-loop (get-solution exp))
+  )
+
+;(list-solutions2 '(a AND b))
+
+(display "Possible solutions for (a or b) or c") (newline)
+
+(list-solutions2 '((a OR b) OR c))
+  
+;(list-solutions2 '(a AND (NOT a)))
 
 ;(test4 '(a OR b))
 
