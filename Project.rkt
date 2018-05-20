@@ -190,8 +190,8 @@
 (define (satisfiable? exp)
   (let ((vars (collect-elements exp)))
   (let ((al (assign-vals vars)))
-    (cond ((var? exp) #t)
-          (else (assert (evaluate exp al))))
+    (cond ((var? exp) #t))
+    (assert (evaluate exp al))
     (not (eq? 'NO_RESULT (lookup (car vars) al))))))
 
 
@@ -204,7 +204,7 @@
         ((and-exp? exp) (and (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)))
         ((not-exp? exp) (not (evaluate (not-arg exp) al)))))
 
-(satisfiable? '(a XOR b))
+(satisfiable? '(a AND (NOT a)))
 
 ; 1. assert a true
 ; 1.1 ...
@@ -213,11 +213,12 @@
 
 (define (get-solution exp)
   (let ((vars (collect-elements exp)))
-  (let ((al (assign-vals vars))); creates alist
-    (cond ((var? exp) #t); dont know what should go here yet
-          (else (assert (evaluate exp al))))
-    (cond ((not (eq? 'NO_RESULT (lookup (car vars) al))) al)
-          (else '())))))
+  (let ((al (assign-vals vars)))
+    (cond ((var? exp) (list(list exp #t))))
+    (assert (evaluate exp al))
+    (cond ((eq? 'NO_RESULT (lookup (car vars) al)) '())
+          (else al)))))
+
 
 (define (member~ e s)
   (cond ((null? s) #f)
