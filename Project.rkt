@@ -123,8 +123,12 @@
 
 (define (make-and l1 l2) (list l1 'AND l2))
 (define (make-or l1 l2) (list l1 'OR l2))
-(define (make-xor l1 l2) (list l1 'XOR l1))
 (define (make-not l1) (list 'NOT l1))
+(define (make-xor l1 l2) (list l1 'XOR l1))
+(define (make-if l1 l2) (list l1 '=> l1))
+(define (make-nand l1 l2) (list l1 'NAND l1))
+
+
 
 
 
@@ -142,8 +146,11 @@
 
 (define (and-exp? exp) (eq? 'AND (operator exp)))
 (define (or-exp? exp) (eq? 'OR (operator exp)))
-(define (xor-exp? exp) (eq? 'XOR (operator exp)))
 (define (not-exp? exp) (eq? 'NOT (first-arg exp)))
+(define (xor-exp? exp) (eq? 'XOR (operator exp)))
+(define (if-exp? exp) (eq? '=> (operator exp)))
+(define (nand-exp? exp) (eq? 'NAND (operator exp)))
+
 
 
 
