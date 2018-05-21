@@ -10,312 +10,225 @@
 
 (require compatibility/defmacro)
 
-(define amb-fail '*)
+(define (driver action exp) ;;;;;;;;;;;;;;;;;; D R I V E R
 
-(define initialize-amb-fail
-  (lambda ()
-    (set! amb-fail
-          (lambda ()
-            'NO_RESULT))));display "The entered boolean expression is not satisfiable.")))))
+  ;; Helper Functions
+  (define amb-fail '*)
 
+  (define initialize-amb-fail
+    (lambda ()
+      (set! amb-fail
+            (lambda ()
+              symbol-null-result))))
 
-(initialize-amb-fail)
+  (initialize-amb-fail)
 
-(define-macro amb
-  (lambda alts...
-    `(let ((+prev-amb-fail amb-fail))
-       (call/cc
-        (lambda (+sk)
-          
-          ,@(map (lambda (alt)
-                   `(call/cc
-                     (lambda (+fk)
-                       (set! amb-fail
-                             (lambda ()
-                               (set! amb-fail +prev-amb-fail)
-                               (+fk 'fail)))
-                       (+sk ,alt))))
-                 alts...)
-          
-          (+prev-amb-fail))))))
+  (define-macro amb
+    (lambda alts...
+      `(let ((+prev-amb-fail amb-fail))
+         (call/cc
+          (lambda (+sk)
+            ,@(map (lambda (alt)
+                     `(call/cc
+                       (lambda (+fk)
+                         (set! amb-fail
+                               (lambda ()
+                                 (set! amb-fail +prev-amb-fail)
+                                 (+fk 'fail)))
+                         (+sk ,alt))))
+                   alts...)
+            (+prev-amb-fail))))))
+  
+  (define assert
+    (lambda (pred)
+      (if (not pred) (amb))))
 
-(define assert
-  (lambda (pred)
-    (if (not pred) (amb))))
-
-(define-macro bag-of
-  (lambda (e)
-    `(let ((+prev-amb-fail amb-fail)
-           (+results '()))
-       (if (call/cc
-            (lambda (+k)
-              (set! amb-fail (lambda () (+k #f)))
-              (let ((+v ,e))
-                (set! +results (cons +v +results))
-                (+k #t))))
-           (amb-fail))
-       (set! amb-fail +prev-amb-fail)
-       (reverse! +results))))
-
-
-(define (an-element-of items)
-  (assert (not (null? items)))
-  (amb (car items) (an-element-of (cdr items))))
+  
+  
+  (define-macro bag-of
+    (lambda (e)
+      `(let ((+prev-amb-fail amb-fail)
+             (+results '()))
+         (if (call/cc
+              (lambda (+k)
+                (set! amb-fail (lambda () (+k #f)))
+                (let ((+v ,e))
+                  (set! +results (cons +v +results))
+                  (+k #t))))
+             (amb-fail))
+         (set! amb-fail +prev-amb-fail)
+         (reverse! +results))))
+  
 
 
-(define number-between
-  (lambda (lo hi)
-    (let loop ((i lo))
-      (if (> i hi) (amb)
-          (amb i (loop (+ i 1)))))))
+  ; Our original idea was to create a satisfiable? function that chained asserts together, but we have realized that is not what we want.
+  ; The issue with chaining asserts together can be shown using an expression such as (NOT (NOT a)). This expression is clearly satisfiable (a is true). But if we
+  ; chain asserts, it would look like this (assert (not (assert (not a))) which is clearly a contradiction. We are asserting that an assert must be false, which is guarenteed to fail.
 
+  ; The correct thing we need to assert is (using the same expression) (assert (not (not a))). Here we are saying we don't care what needs to be true within the arguments of the expression,
+  ; the only thing that needs to be true is the expression itself.
 
-; support code for puzzle, presented below
+  (define symbol-null-result 'NO_RESULT)
+  (define symbol-and 'AND)
+  (define symbol-or 'OR)
+  (define symbol-not 'NOT)
+  (define symbol-xor 'XOR)
+  (define symbol-if '->)
+  (define symbol-nand 'NAND)
 
-(define (member? e s)
-  (cond ((null? s) #f)
-        ((eq? e (car s)) #t)
-        (else (member? e (cdr s)))))
+  
+  (define (get-value) (amb #t #f))
+  
+  (define var?
+    (lambda(x) (and (not (pair? x)) (not (null? x)))))
 
-(define (distinct? items)
-  (cond ((null? items) #t)
-        ((null? (cdr items)) #t)
-        ((member? (car items) (cdr items)) #f)
-        (else (distinct? (cdr items)))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; "Choose an element such that nothing we do later will result in a call to fail." The assert function is passed an argument which evaluates to false, it calls fail via (amb)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-; try a simple example of an or expression whose args are just symbols
-
-(define (or-solution or-exp)
-  (let ((alist (list (list (first-arg or-exp) (get-value)) (list (sec-arg or-exp) (get-value)))))
-    (assert (or (cell-val-alt (car alist)) (cell-val-alt (cadr alist))))
-    (assert (not (cell-val-alt (car alist))))
-    (assert (not (cell-val-alt (cadr alist))))
-    alist))
-
-; Notice we can make the value of a be false because of the assert.
-(define (test lst)
-  (let ((vars (assign-vals lst)))
-    (assert (and (lookup 'a vars) (not (lookup 'b vars))))
-    vars))
-
-;(test '(a b c d))
-
-
-; Our original idea was to create a satisfiable? function that chained asserts together, but we have realized that is not what we want.
-; The issue with chaining asserts together can be shown using an expression such as (NOT (NOT a)). This expression is clearly satisfiable (a is true). But if we
-; chain asserts, it would look like this (assert (not (assert (not a))) which is clearly a contradiction. We are asserting that an assert must be false, which is guarenteed to fail.
-
-; The correct thing we need to assert is (using the same expression) (assert (not (not a))). Here we are saying we don't care what needs to be true within the arguments of the expression,
-; the only thing that needs to be true is the expression itself.
-
-(define (get-value) (amb #t #f))
-
-(define var? ; renamed atom? function
-  (lambda(x) (and (not (pair? x)) (not (null? x)))))
-
-(define (make-and l1 l2) (list l1 'AND l2))
-(define (make-or l1 l2) (list l1 'OR l2))
-(define (make-not l1) (list 'NOT l1))
-(define (make-xor l1 l2) (list l1 'XOR l1))
-(define (make-if l1 l2) (list l1 '=> l1))
-(define (make-nand l1 l2) (list l1 'NAND l1))
+  (define (make-and l1 l2) (list l1 symbol-and l2))
+  (define (make-or l1 l2) (list l1 symbol-or l2))
+  (define (make-not l1) (list symbol-not l1))
+  (define (make-xor l1 l2) (list l1 symbol-xor l1))
+  ;(define (make-if l1 l2) (list l1 '=> l1))
+  ;(define (make-nand l1 l2) (list l1 'NAND l1))
 
 
 
 
 
-(define (first-arg exp)
-  (car exp))
+  (define (first-arg exp)
+    (car exp))
 
-(define (operator exp)
-  (car (cdr exp)))
+  (define (operator exp)
+    (car (cdr exp)))
 
-(define (second-arg exp)
-  (car (cdr (cdr exp))))
+  (define (second-arg exp)
+    (car (cdr (cdr exp))))
 
-(define not-arg operator)
-
-
-(define (and-exp? exp) (eq? 'AND (operator exp)))
-(define (or-exp? exp) (eq? 'OR (operator exp)))
-(define (not-exp? exp) (eq? 'NOT (first-arg exp)))
-(define (xor-exp? exp) (eq? 'XOR (operator exp)))
-(define (if-exp? exp) (eq? '=> (operator exp)))
-(define (nand-exp? exp) (eq? 'NAND (operator exp)))
+  (define not-arg operator)
 
 
+  (define (and-exp? exp) (eq? symbol-and (operator exp)))
+  (define (or-exp? exp) (eq? symbol-or (operator exp)))
+  (define (not-exp? exp) (eq? symbol-not (first-arg exp)))
+  (define (xor-exp? exp) (eq? symbol-xor (operator exp)))
+  (define (if-exp? exp) (eq? symbol-if (operator exp)))
+  (define (nand-exp? exp) (eq? symbol-nand (operator exp)))
+
+  ; Returns alist
+  (define (assign-vals vars)
+    (cond ((null? vars) '())
+          (else (cons (list (car vars) (get-value)) (assign-vals (cdr vars))))))
 
 
-;
+  (define (lookup target alist)
+    (cond ((eq? (caar alist) target) (cadar alist))
+          (else (lookup target (cdr alist)))))
 
-(define (contains? target lst)
-  (cond ((null? lst) #f)
-        ((eq? car(lst) target) #t)
-        (else (contains? target (cdr lst)))))
+  (define (collect-elements exp)
+    (define (flatten exp)
+      (cond ((null? exp) '())
+            ((pair? exp) (append (flatten (car exp)) (flatten (cdr exp))))
+            (else (list exp))))
+    
+    (define (filter-duplicates lat list-so-far)
+      (cond ((null? lat) list-so-far)
+            ((not (member~ (car lat) list-so-far)) (filter-duplicates (cdr lat) (append list-so-far (list (car lat)))))
+            (else (filter-duplicates (cdr lat) list-so-far))))
+    
+    (define (operator? a)
+      (and
+       (not (eq? symbol-and a))
+       (not (eq? symbol-or a))
+       (not (eq? symbol-not a))
+       (not (eq? symbol-xor a))
+       (not (eq? symbol-if a))
+       (not (eq? symbol-nand a))))
+    
+    (define (filter-operators lat)
+      (filter operator? lat))
+    
+    (filter-operators (filter-duplicates (flatten exp) '())))
+  
+  (define (evaluate exp al)
+    (cond ((var? exp) (lookup exp al))
+          ((or-exp? exp) (or (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)))
+          ((xor-exp? exp) (and (or (evaluate (first-arg exp) al) (evaluate (second-arg exp) al))
+                               (not (and (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)))))
+          ((and-exp? exp) (and (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)))
+          ((not-exp? exp) (not (evaluate (not-arg exp) al)))))
+  
+  (define (get-solution exp)
+    (let ((vars (collect-elements exp)))
+      (let ((al (assign-vals vars)))
+        (cond ((var? exp) (list(list exp #t))))
+        (assert (evaluate exp al))
+        (cond ((eq? symbol-null-result (lookup (car vars) al)) '())
+              (else al)))))
 
-; Returns alist
-(define (assign-vals vars)
-  (cond ((null? vars) '())
-        (else (cons (list (car vars) (get-value)) (assign-vals (cdr vars))))))
-;(assign-vals '(a b c d))
+  (define (member~ e s)
+    (cond ((null? s) #f)
+          ((equal? e (car s)) #t)
+          (else (member~ e (cdr s)))))
 
-;((a 1) (b 1) () ())
-; pre: target is contained within alist
-(define (lookup target alist)
-  (cond ((eq? (caar alist) target) (cadar alist))
-        (else (lookup target (cdr alist)))))
+  (define (distinct~ items)
+    (cond ((null? items) #t)
+          ((null? (cdr items)) #t)
+          ((member~ (car items) (cdr items)) #f)
+          (else (distinct~ (cdr items)))))
 
-(define (collect-elements exp)
-  (define (flatten exp)
-    (cond ((null? exp) '())
-          ((pair? exp) (append (flatten (car exp)) (flatten (cdr exp))))
-          (else (list exp))))
-  (define (filter-duplicates lat list-so-far)
-    (cond ((null? lat) list-so-far)
-          ((not (member? (car lat) list-so-far)) (filter-duplicates (cdr lat) (append list-so-far (list (car lat)))))
-          (else (filter-duplicates (cdr lat) list-so-far))))
-  (define (operator? a)
-    (and
-     (not (eq? 'AND a))
-     (not (eq? 'OR a))
-     (not (eq? 'NOT a))
-     (not (eq? 'XOR a))))
-  (define (filter-operators lat)
-    (filter operator? lat))
-(filter-operators (filter-duplicates (flatten exp) '())))
+  ;; MAIN PROCEDURES
+  (define (satisfiable? exp)
+    (let ((vars (collect-elements exp)))
+      (let ((al (assign-vals vars)))
+        (cond ((var? exp) #t))
+        (assert (evaluate exp al))
+        (not (eq? 'NO_RESULT (lookup (car vars) al))))))
 
-; Precondition: exp is a boolean expression
-; Postcondition: #t will be returned if exp is satisfiable, #f otherwise
-(define (satisfiable? exp)
-  (let ((vars (collect-elements exp)))
-  (let ((al (assign-vals vars)))
-    (cond ((var? exp) #t))
-    (assert (evaluate exp al))
-    (not (eq? 'NO_RESULT (lookup (car vars) al))))))
+  (define (list-solutions exp)
+    (define solutions-length (expt 2 (length (collect-elements exp))))
+    (define no-solution 'NO_RESULT)
+    (define solutions (make-vector solutions-length no-solution))
+    
+    (define (solution-already-exists? sol)
+      (define (iter i)
+        (cond ((equal? (vector-ref solutions i) sol) #t)
+              ((= i (- solutions-length 1)) #f)
+              (else (iter (+ i 1)))))
+      (iter 0))
+    
+    (define (add-solution sol)
+      (define (iter i)
+        (cond ((= i (- solutions-length 1)) (display "Big error.") (newline))
+              ((equal? (vector-ref solutions i) no-solution) (vector-set! solutions i sol))
+              (else (iter (+ i 1)))))
+      (iter 0))
+    
+    (define (main-loop new-sol)
+      (let ((new-sol (get-solution exp)))
+        (cond ((null? new-sol) (result))
+              ((solution-already-exists? new-sol)
+               (assert (not (solution-already-exists? new-sol)))
+               (main-loop new-sol))
+              (else
+               (add-solution new-sol)
+               (main-loop new-sol)))))
+    
+    (define (result)
+      (define (iter i list-so-far)
+        (cond ((= i (- solutions-length 1)) (display "Solutions for: ") (display exp) (newline) list-so-far)
+              ((not (equal? (vector-ref solutions i) symbol-null-result)) (iter (+ i 1) (append list-so-far (list (vector-ref solutions i)))))
+              (else (iter (+ i 1) list-so-far))))
+      (iter 0 '()))
+    
+      (main-loop (get-solution exp)))
 
-
-
-
-(define (evaluate exp al)
-  (cond ((var? exp) (lookup exp al))
-        ((or-exp? exp) (or (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)))
-        ((xor-exp? exp) (and (or (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)) (not (and (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)))))
-        ((and-exp? exp) (and (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)))
-        ((not-exp? exp) (not (evaluate (not-arg exp) al)))))
-
-(satisfiable? '(a AND (NOT a)))
-
-; 1. assert a true
-; 1.1 ...
-; 2. assert a false
-; 2.1 ...
-
-(define (get-solution exp)
-  (let ((vars (collect-elements exp)))
-  (let ((al (assign-vals vars)))
-    (cond ((var? exp) (list(list exp #t))))
-    (assert (evaluate exp al))
-    (cond ((eq? 'NO_RESULT (lookup (car vars) al)) '())
-          (else al)))))
-
-
-(define (member~ e s)
-  (cond ((null? s) #f)
-        ((equal? e (car s)) #t)
-        (else (member~ e (cdr s)))))
-
-(define (list-solutions exp)
-  (define (iter list-so-far)
-    (let ((sol (get-solution exp)))
-    (display "list so far: ")
-    (display list-so-far)
-    (newline)
-      ;(display "sol found: ")
-      ;(display sol)
-      ;(newline)
-    (cond ((null? sol) list-so-far)
-          (else
-           ;(display "else entered")
-           ;(newline)
-           ;(display (not (member~ sol list-so-far)))
-           ;(newline)
-           (assert (not (member~ sol list-so-far)))
-           ;(display "solution after assert: ")
-           ;(display sol)
-           ;(newline)
-           (iter (append
-            list-so-far
-            (list sol)))))))
-  (iter '()))
-
-;(list-solutions '(a OR b))
-
-(define (distinct~ items)
-  (cond ((null? items) #t)
-        ((null? (cdr items)) #t)
-        ((member~ (car items) (cdr items)) #f)
-        (else (distinct~ (cdr items)))))
-
-(define (test4 exp)
-  (let ((solution1 (get-solution exp))
-        (solution2 (get-solution exp)))
-    (assert (distinct~ (list solution1 solution2)))
-  (list solution1 solution2)))
-
-
-(define (list-solutions2 exp)
-  (define solutions-length (expt 2 (length (collect-elements exp))))
-  (define no-solution 'NO_RESULT)
-  (define solutions (make-vector solutions-length no-solution))
-  (define (solution-exists? sol)
-    (define (iter i)
-      (cond ((equal? (vector-ref solutions i) sol) #t)
-            ((= i (- solutions-length 1)) #f)
-            (else (iter (+ i 1)))))
-    (iter 0))
-  (define (add-solution sol)
-    ; (display "adding ") (display sol) (newline)
-    (define (iter i)
-      (cond ((= i (- solutions-length 1)) (display "Big error.") (newline))
-            ((equal? (vector-ref solutions i) no-solution) (vector-set! solutions i sol))
-            (else (iter (+ i 1)))))
-    (iter 0))
-  (define (main-loop new-sol)
-    ; (display new-sol) (newline) (display "solutions: ") (display solutions) (newline)
-    (let ((new-sol (get-solution exp)))
-      (cond ((null? new-sol) solutions)
-            ((solution-exists? new-sol)
-             (assert (not (solution-exists? new-sol)))
-             (main-loop new-sol))
-            (else
-             (add-solution new-sol)
-             (main-loop new-sol)))))
-  (main-loop (get-solution exp))
+  (cond ((equal? action 'list-solutions) (list-solutions exp))
+        ((equal? action 'satisfiable?) (satisfiable? exp))
+        (else (display "Select either 'satisfiable?' or 'list-solutions' as your desired action.") (newline)))
   )
 
-;(list-solutions2 '(a AND b))
+(driver 'satisfiable? '(a OR b))
+(driver 'list-solutions '(a OR b))
 
-;(display "Possible solutions for (a or b) or c") (newline)
+(driver 'satisfiable? '(a AND b))
+(driver 'list-solutions '(a AND b))
 
-;(satisfiable? '((a OR b) OR c))
-
-;(display "Possible solutions for (a AND b) or c") (newline)
-
-;(list-solutions2 '(a AND b))
-  
-;(list-solutions2 '(a AND (NOT a)))
-
-;(test4 '(a OR b))
-
-; (satisfiable? '(((NOT a) AND b) AND (c XOR b)))
-
-; (satisfiable? '((NOT a) AND a))
-
+(driver 'list-solutions '(((a OR (NOT a)) OR b) AND a))
