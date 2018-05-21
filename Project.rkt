@@ -8,6 +8,10 @@
 
 ;;;; use the language Pretty Big -- r5rs will not permit 'require'
 
+;;; Created by Andrew Truett and Vagan Grigoryan
+;;; Spring 2018
+;;; CSC 335
+
 (require compatibility/defmacro)
 
 (define (driver action exp) ;;;;;;;;;;;;;;;;;; D R I V E R
@@ -86,22 +90,16 @@
   (define (make-or l1 l2) (list l1 symbol-or l2))
   (define (make-not l1) (list symbol-not l1))
   (define (make-xor l1 l2) (list l1 symbol-xor l1))
-  ;(define (make-if l1 l2) (list l1 '=> l1))
-  ;(define (make-nand l1 l2) (list l1 'NAND l1))
+  (define (make-if l1 l2) (list l1 symbol-if l1))
+  (define (make-nand l1 l2) (list l1 symbol-nand l1))
 
 
 
 
 
-  (define (first-arg exp)
-    (car exp))
-
-  (define (operator exp)
-    (car (cdr exp)))
-
-  (define (second-arg exp)
-    (car (cdr (cdr exp))))
-
+  (define (first-arg exp) (car exp))
+  (define (operator exp) (car (cdr exp)))
+  (define (second-arg exp) (car (cdr (cdr exp))))
   (define not-arg operator)
 
 
@@ -153,6 +151,8 @@
           ((xor-exp? exp) (and (or (evaluate (first-arg exp) al) (evaluate (second-arg exp) al))
                                (not (and (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)))))
           ((and-exp? exp) (and (evaluate (first-arg exp) al) (evaluate (second-arg exp) al)))
+          ((if-exp? exp) (or (not (evaluate (first-arg exp) al)) (evaluate (second-arg exp) al)))
+          ((nand-exp? exp) (not (and (evaluate (first-arg exp) al) (evaluate (second-arg exp) al))))
           ((not-exp? exp) (not (evaluate (not-arg exp) al)))))
   
   (define (get-solution exp)
@@ -225,10 +225,12 @@
         (else (display "Select either 'satisfiable?' or 'list-solutions' as your desired action.") (newline)))
   )
 
-(driver 'satisfiable? '(a OR b))
-(driver 'list-solutions '(a OR b))
+;(driver 'satisfiable? '(a OR b))
+;(driver 'list-solutions '(a OR b))
 
-(driver 'satisfiable? '(a AND b))
-(driver 'list-solutions '(a AND b))
+;(driver 'satisfiable? '(a AND b))
+;(driver 'list-solutions '(a AND b))
 
-(driver 'list-solutions '(((a OR (NOT a)) OR b) AND a))
+;(driver 'list-solutions '(((a OR (NOT a)) OR b) AND a))
+
+;(driver 'list-solutions '(a NAND b))
