@@ -196,7 +196,7 @@
     
     (define (add-solution sol)
       (define (iter i)
-        (cond ((= i (- solutions-length 1)) (display "Big error.") (newline))
+        (cond ((= i (- solutions-length 1)) (display "A critical error has occurred.") (newline))
               ((equal? (vector-ref solutions i) no-solution) (vector-set! solutions i sol))
               (else (iter (+ i 1)))))
       (iter 0))
