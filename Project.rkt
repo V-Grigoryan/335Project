@@ -184,8 +184,7 @@
 
   (define (list-solutions exp)
     (define solutions-length (expt 2 (length (collect-elements exp))))
-    (define no-solution 'NO_RESULT)
-    (define solutions (make-vector solutions-length no-solution))
+    (define solutions (make-vector solutions-length symbol-null-result))
     
     (define (solution-already-exists? sol)
       (define (iter i)
@@ -197,7 +196,7 @@
     (define (add-solution sol)
       (define (iter i)
         (cond ((= i (- solutions-length 1)) (display "A critical error has occurred.") (newline))
-              ((equal? (vector-ref solutions i) no-solution) (vector-set! solutions i sol))
+              ((equal? (vector-ref solutions i) symbol-null-result) (vector-set! solutions i sol))
               (else (iter (+ i 1)))))
       (iter 0))
     
@@ -225,12 +224,12 @@
         (else (display "Select either 'satisfiable?' or 'list-solutions' as your desired action.") (newline)))
   )
 
-;(driver 'satisfiable? '(a OR b))
-;(driver 'list-solutions '(a OR b))
+(driver 'satisfiable? '(a OR b))
+(driver 'list-solutions '(a OR b))
 
-;(driver 'satisfiable? '(a AND b))
-;(driver 'list-solutions '(a AND b))
+(driver 'satisfiable? '(a AND b))
+(driver 'list-solutions '(a AND b))
 
-;(driver 'list-solutions '(((a OR (NOT a)) OR b) AND a))
+(driver 'list-solutions '(((a OR (NOT a)) OR b) AND a))
 
-;(driver 'list-solutions '(a NAND b))
+(driver 'list-solutions '(a NAND b))
